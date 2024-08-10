@@ -9,6 +9,9 @@ This Discord bot enables users to create and manage Pomodoro sessions directly w
 - **Flexible Timers**: Customize work and break durations to suit your needs.
 - **Voice Channel Integration**: Sessions are linked to specific voice channels, ensuring all participants are on the same page.
 
+## Try
+[Bot Invite Link](https://discord.com/oauth2/authorize?client_id=1271435477450231870&scope=bot&permissions=10240)
+
 ## Installation
 
 1. **Clone the Repository**:
