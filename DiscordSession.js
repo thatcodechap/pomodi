@@ -1,37 +1,51 @@
 import {PomodoroSession, PomodoroObserver, TICK_GAP_IN_SECONDS} from "./Pomodoro.js"
 
-export class DiscordSession{
-    constructor(voiceChannel, type, textChannel){
-        this.voiceChannel = voiceChannel
-        this.type = type
-        this.textChannel = textChannel
-        this.pomodoroSession = new PomodoroSession(type[0], type[1])
-        this.pomodoroObserver = new DiscordSessionPomodoroObserver(textChannel, voiceChannel, type)
-        this.pomodoroSession.subscribe(this.pomodoroObserver)
-        this.pomodoroSession.start()
+export class DiscordSessionHandler{
+    constructor(){
+        this.activeSessions = {}
     }
-    stop(){
-        this.pomodoroSession.stop()
+    get(voiceChannel){
+        return this.activeSessions[voiceChannel.id]
+    }
+    create(textChannel, voiceChannel, sessionType, cycles){
+        let newPomodoroSession = new PomodoroSession(sessionType[0], sessionType[1])
+        let newDiscordSessionPomodoroObserver = new DiscordSessionPomodoroObserver(textChannel, voiceChannel, sessionType, cycles, ()=>this.delete(voiceChannel))
+        newPomodoroSession.subscribe(newDiscordSessionPomodoroObserver)
+        this.activeSessions[voiceChannel.id] = newPomodoroSession
+        newPomodoroSession.start()
+    }
+    delete(voiceChannel){
+        this.activeSessions[voiceChannel.id].stop()
+        delete this.activeSessions[voiceChannel.id]
     }
 }
 
 class DiscordSessionPomodoroObserver extends PomodoroObserver{
-    constructor(textChannel, voiceChannel, sessionType){
+    constructor(textChannel, voiceChannel, sessionType, cycles, selfDestructor){
         super()
         this.textChannel = textChannel
         this.voiceChannel = voiceChannel
         this.sessionType = sessionType
+        this.selfDestructor = selfDestructor
         this.counter = sessionType[0]*60
+        this.cycles = cycles
+        this.currentCycles = 0
         this.ticker = 0
         this.activeMessage = null
     }
     async work(){
+        if(this.currentCycles == this.cycles)
+            return this.selfDestructor()
         this.counter = this.sessionType[0]*60
         this.ticker = 0
         let mentions = []
         this.voiceChannel.members.each(member=>{
             mentions.push(`<@${member.id}>`)
         })
+        if(mentions.length == 0){
+            this.selfDestructor()
+            return
+        }
         let text = "## Time to studyyy guysss ! Wake upp"
         await this.textChannel.send({content: text})
         this.activeMessage = this.textChannel.send("Time Remaining")
@@ -55,9 +69,14 @@ class DiscordSessionPomodoroObserver extends PomodoroObserver{
         this.voiceChannel.members.each(member=>{
             mentions.push(`<@${member.id}>`)
         })
+        if(mentions.length == 0){
+            this.selfDestructor()
+            return
+        }
         let text = "## Time for break guysss ! Enjoyyy "
         await this.textChannel.send({content: text})
         this.activeMessage = this.textChannel.send("Time Remaining")
         this.textChannel.send(mentions.join(' '))
+        this.currentCycles = this.currentCycles + 1
     }
 }
